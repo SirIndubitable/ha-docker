@@ -1,0 +1,46 @@
+version: '3'
+services:
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    links:
+      - homeassistant:homeassistant
+    volumes:
+      - ./data/nginx:/var/nginx
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    restart: unless-stopped
+    command: "/bin/bash ./run.sh"
+    environment:
+      HOSTNAME: ${HOSTNAME:?err}
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    restart: unless-stopped
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  dnsbot-ha:
+    build:
+      context: ./dnsbot
+    restart: unless-stopped
+    command: "/bin/bash ./run.sh"
+    environment:
+      HOSTNAME: ${HOSTNAME:?err}
+      USERNAME: ${GOOGLE_DNS_USERNAME:?err}
+      PASSWORD: ${GOOGLE_DNS_PASSWORD:?err}
+
+  homeassistant:
+    container_name: homeassistant
+    hostname: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./data/ha:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    privileged: true

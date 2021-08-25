@@ -1,0 +1,3 @@
+* text=auto
+nginx/*.sh text eol=lf
+dnsbot/*.sh text eol=lf
